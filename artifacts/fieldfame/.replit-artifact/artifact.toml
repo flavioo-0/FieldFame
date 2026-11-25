@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/fieldfame/"
+title = "FieldFame"
+description = "Un'app mobile di social scouting per il calcio amatoriale: gli atleti condividono le proprie azioni, costruiscono un profilo sportivo e si fanno scoprire attraverso classifiche locali, a partire dal pilot di Bari."
+version = "1.0.0"
+id = "artifacts/fieldfame"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/fieldfame/" ]
+localPort = 20908
+
+[services.development]
+run = "pnpm --filter @workspace/fieldfame run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/fieldfame", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/fieldfame", "run", "serve" ]
+
+[services.env]
+PORT = "20908"
+BASE_PATH = "/fieldfame/"

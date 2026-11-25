@@ -1,0 +1,660 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: community
+    description: Shared FieldFame community
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /community/profile:
+    get:
+      operationId: getCommunityProfile
+      tags: [community]
+      summary: Get the signed-in athlete profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Athlete profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityProfile"
+        "401":
+          description: Sign-in required
+    put:
+      operationId: updateCommunityProfile
+      tags: [community]
+      summary: Update the signed-in athlete profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityProfileUpdate"
+      responses:
+        "200":
+          description: Updated athlete profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityProfile"
+  /community/feed:
+    get:
+      operationId: getCommunityFeed
+      tags: [community]
+      summary: Read the shared global or followed-athlete feed
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: mode
+          in: query
+          schema:
+            type: string
+            enum: [popular, following]
+            default: popular
+        - name: sport
+          in: query
+          schema:
+            $ref: "#/components/schemas/Sport"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 30
+      responses:
+        "200":
+          description: Shared feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityFeed"
+  /community/uploads/request-url:
+    post:
+      operationId: requestCommunityUpload
+      tags: [community]
+      summary: Request a private video upload URL
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoUploadRequest"
+      responses:
+        "200":
+          description: Upload URL and private object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoUploadResponse"
+  /community/posts:
+    post:
+      operationId: createCommunityPost
+      tags: [community]
+      summary: Publish an uploaded video to the shared feed
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityPostCreate"
+      responses:
+        "201":
+          description: Published post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityPost"
+  /community/posts/{postId}/like:
+    post:
+      operationId: toggleCommunityPostLike
+      tags: [community]
+      summary: Toggle a like on a shared post
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Updated like state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionResult"
+  /community/posts/{postId}/comments:
+    get:
+      operationId: getCommunityPostComments
+      tags: [community]
+      summary: List comments and mentions for a shared post
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Comments for the post
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments]
+                properties:
+                  comments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CommunityComment"
+    post:
+      operationId: createCommunityPostComment
+      tags: [community]
+      summary: Add a comment with optional athlete mentions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityComment"
+  /community/athletes:
+    get:
+      operationId: searchCommunityAthletes
+      tags: [community]
+      summary: Search athletes in the shared community
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+        - name: sport
+          in: query
+          schema:
+            $ref: "#/components/schemas/Sport"
+      responses:
+        "200":
+          description: Matching athletes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [athletes]
+                properties:
+                  athletes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CommunityAthlete"
+  /community/athletes/{athleteId}/follow:
+    post:
+      operationId: toggleCommunityAthleteFollow
+      tags: [community]
+      summary: Follow or unfollow an athlete
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: athleteId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated follow state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+  /community/tournaments:
+    get:
+      operationId: getCommunityTournaments
+      tags: [community]
+      summary: List shared tournaments and certified winners
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Shared tournaments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tournaments]
+                properties:
+                  tournaments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CommunityTournament"
+    post:
+      operationId: createCommunityTournament
+      tags: [community]
+      summary: Create a shared tournament
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityTournamentCreate"
+      responses:
+        "201":
+          description: Created tournament
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityTournament"
+  /community/tournaments/{tournamentId}/join:
+    post:
+      operationId: toggleCommunityTournamentJoin
+      tags: [community]
+      summary: Join or leave a shared tournament
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Registration state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [joined, registeredCount]
+                properties:
+                  joined:
+                    type: boolean
+                  registeredCount:
+                    type: integer
+  /community/tournaments/{tournamentId}/winner:
+    post:
+      operationId: certifyCommunityTournamentWinner
+      tags: [community]
+      summary: Certify a winner as the tournament organizer
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [winnerAthleteId]
+              properties:
+                winnerAthleteId:
+                  type: string
+      responses:
+        "200":
+          description: Certified tournament winner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityTournament"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Sport:
+      type: string
+      enum: [Calcio, Basket, Pallavolo, Padel]
+    CommunityProfile:
+      type: object
+      required: [userId, username, displayName, city, sport, position, number, bio, avatarUrl, followersCount, followingCount, postsCount]
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        city:
+          type: string
+        sport:
+          $ref: "#/components/schemas/Sport"
+        position:
+          type: string
+        number:
+          type: integer
+        bio:
+          type: string
+        avatarUrl:
+          type: [string, "null"]
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        postsCount:
+          type: integer
+    CommunityProfileUpdate:
+      type: object
+      required: [username, displayName, city, sport, position, number, bio]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 80
+        city:
+          type: string
+          maxLength: 100
+        sport:
+          $ref: "#/components/schemas/Sport"
+        position:
+          type: string
+          maxLength: 50
+        number:
+          type: integer
+          minimum: 0
+          maximum: 99
+        bio:
+          type: string
+          maxLength: 240
+        avatarUrl:
+          type: [string, "null"]
+    CommunityPost:
+      type: object
+      required: [id, athleteId, athleteName, username, city, sport, position, category, caption, mediaUrl, duration, createdAt, likes, comments, likedByMe]
+      properties:
+        id:
+          type: string
+          format: uuid
+        athleteId:
+          type: string
+        athleteName:
+          type: string
+        username:
+          type: string
+        city:
+          type: string
+        sport:
+          $ref: "#/components/schemas/Sport"
+        position:
+          type: string
+        category:
+          type: string
+        caption:
+          type: string
+        mediaUrl:
+          type: string
+          format: uri
+        duration:
+          type: [integer, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        likes:
+          type: integer
+        comments:
+          type: integer
+        likedByMe:
+          type: boolean
+    CommunityFeed:
+      type: object
+      required: [posts]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommunityPost"
+    CommunityPostCreate:
+      type: object
+      required: [caption, sport, category, mediaPath]
+      properties:
+        caption:
+          type: string
+          minLength: 1
+          maxLength: 300
+        sport:
+          $ref: "#/components/schemas/Sport"
+        category:
+          type: string
+          maxLength: 32
+        mediaPath:
+          type: string
+          pattern: "^/objects/"
+        duration:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 60
+    VideoUploadRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 1
+          maximum: 104857600
+        contentType:
+          type: string
+          enum: [video/mp4, video/quicktime, video/webm]
+    VideoUploadResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+    ReactionResult:
+      type: object
+      required: [liked, likes]
+      properties:
+        liked:
+          type: boolean
+        likes:
+          type: integer
+    CommunityAthlete:
+      allOf:
+        - $ref: "#/components/schemas/CommunityProfile"
+        - type: object
+          required: [isFollowing]
+          properties:
+            isFollowing:
+              type: boolean
+    FollowResult:
+      type: object
+      required: [following]
+      properties:
+        following:
+          type: boolean
+    CommunityComment:
+      type: object
+      required: [id, postId, authorId, authorName, username, body, createdAt, mentions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        postId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+        authorName:
+          type: string
+        username:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        mentions:
+          type: array
+          items:
+            type: object
+            required: [userId, username, displayName]
+            properties:
+              userId:
+                type: string
+              username:
+                type: string
+              displayName:
+                type: string
+    CommunityTournament:
+      type: object
+      required: [id, organizerId, organizerName, title, sport, city, venue, eventDate, format, teamCapacity, registeredCount, currentUserJoined, isOrganizer, winnerAthleteId, winnerName, winnerCertifiedAt, participants]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizerId:
+          type: string
+        organizerName:
+          type: string
+        title:
+          type: string
+        sport:
+          $ref: "#/components/schemas/Sport"
+        city:
+          type: string
+        venue:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        format:
+          type: string
+        teamCapacity:
+          type: integer
+        registeredCount:
+          type: integer
+        currentUserJoined:
+          type: boolean
+        isOrganizer:
+          type: boolean
+        winnerAthleteId:
+          type: [string, "null"]
+        winnerName:
+          type: [string, "null"]
+        winnerCertifiedAt:
+          type: [string, "null"]
+        participants:
+          type: array
+          items:
+            type: object
+            required: [userId, username, displayName]
+            properties:
+              userId:
+                type: string
+              username:
+                type: string
+              displayName:
+                type: string
+    CommunityTournamentCreate:
+      type: object
+      required: [title, sport, city, venue, eventDate, format, teamCapacity]
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        sport:
+          $ref: "#/components/schemas/Sport"
+        city:
+          type: string
+          minLength: 2
+          maxLength: 100
+        venue:
+          type: string
+          minLength: 2
+          maxLength: 160
+        eventDate:
+          type: string
+          format: date-time
+        format:
+          type: string
+          maxLength: 40
+        teamCapacity:
+          type: integer
+          minimum: 2
+          maximum: 256
+        description:
+          type: string
+          maxLength: 300
+
